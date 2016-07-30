@@ -241,37 +241,38 @@ def test_filterer():
     picks = picks[1:13:3]
     epochs = Epochs(raw, events, event_id, tmin, tmax, picks=picks,
                     baseline=(None, 0), preload=True)
-    epochs_data = epochs.get_data()
+    X = epochs.get_data()
 
     # Add tests for different combinations of l_freq and h_freq
-    filt = Filterer(epochs.info['sfreq'], l_freq=40, h_freq=80,
-                           filter_length='auto',
-                           l_trans_bandwidth='auto', h_trans_bandwidth='auto')
+    filt = Filterer(l_freq=40, h_freq=80, sfreq=epochs.info['sfreq'],
+                    filter_length='auto', l_trans_bandwidth='auto',
+                    h_trans_bandwidth='auto')
     y = epochs.events[:, -1]
     with warnings.catch_warnings(record=True):  # stop freq attenuation warning
-        X = filt.fit_transform(epochs_data, y)
-        assert_true(X.shape == epochs_data.shape)
-        assert_array_equal(filt.fit(epochs_data, y).transform(epochs_data), X)
-        result = X
+        result = filt.fit_transform(X, y)
+        assert_true(X.shape == result.shape)
+        assert_array_equal(filt.fit(X, y).transform(X), result)
 
-    filt = Filterer(epochs.info['sfreq'], l_freq=None, h_freq=40,
-                           filter_length='auto',
-                           l_trans_bandwidth='auto', h_trans_bandwidth='auto')
+    filt = Filterer(l_freq=None, h_freq=40, sfreq=epochs.info['sfreq'],
+                    filter_length='auto', l_trans_bandwidth='auto',
+                    h_trans_bandwidth='auto')
     y = epochs.events[:, -1]
     with warnings.catch_warnings(record=True):  # stop freq attenuation warning
-        X = filt.fit_transform(epochs_data, y)
+        X = filt.fit_transform(X, y)
 
-    filt = Filterer(epochs.info['sfreq'], l_freq=1, h_freq=1)
+    filt = Filterer(l_freq=1, h_freq=1, sfreq=epochs.info['sfreq'])
     y = epochs.events[:, -1]
     with warnings.catch_warnings(record=True):  # stop freq attenuation warning
-        assert_raises(ValueError, filt.fit_transform, epochs_data, y)
+        assert_raises(ValueError, filt.fit_transform, X, y)
 
-    filt = Filterer(epochs.info['sfreq'], l_freq=40, h_freq=None,
-                           filter_length='auto',
-                           l_trans_bandwidth='auto', h_trans_bandwidth='auto')
+    filt = Filterer(l_freq=40, h_freq=None, sfreq=epochs.info['sfreq'],
+                    filter_length='auto', l_trans_bandwidth='auto',
+                    h_trans_bandwidth='auto')
     with warnings.catch_warnings(record=True):  # stop freq attenuation warning
-        X = filt.fit_transform(epochs_data, y)
+        result = filt.fit_transform(X, y)
 
-    # Test init exception
+    # Test fit and transform numpy type check
     assert_raises(ValueError, filt.fit, epochs, y)
     assert_raises(ValueError, filt.transform, epochs, y)
+
+    assert_raises(ValueError, Filterer, "10 Hz")
