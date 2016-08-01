@@ -275,4 +275,7 @@ def test_filterer():
     assert_raises(ValueError, filt.fit, epochs, y)
     assert_raises(ValueError, filt.transform, epochs, y)
 
+    # Test init test
     assert_raises(ValueError, Filterer, "10 Hz")
+    assert_raises(ValueError, Filterer, 10, h_freq='5hz')
+    assert_raises(ValueError, Filterer, 10, l_trans_bandwidth='10s')
