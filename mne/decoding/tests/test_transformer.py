@@ -14,7 +14,7 @@ from numpy.testing import (assert_array_equal, assert_equal,
 from mne import io, read_events, Epochs, pick_types
 from mne.decoding import Scaler, FilterEstimator
 from mne.decoding import (PSDEstimator, EpochsVectorizer, Vectorizer,
-                          UnsupervisedSpatialFilter, Filterer)
+                          UnsupervisedSpatialFilter, TemporalFilter)
 from mne.utils import requires_sklearn
 
 warnings.simplefilter('always')  # enable b/c these tests throw warnings
@@ -231,51 +231,47 @@ def test_unsupervised_spatial_filter():
     assert_raises(ValueError, UnsupervisedSpatialFilter, PCA(4), 2)
 
 
-def test_filterer():
-    """Test methods of Filterer
-    """
-    raw = io.read_raw_fif(raw_fname, preload=False)
-    events = read_events(event_name)
-    picks = pick_types(raw.info, meg=True, stim=False, ecg=False,
-                       eog=False, exclude='bads')
-    picks = picks[1:13:3]
-    epochs = Epochs(raw, events, event_id, tmin, tmax, picks=picks,
-                    baseline=(None, 0), preload=True)
-    X = epochs.get_data()
+def test_temporal_filterer():
+    """Test methods of TemporalFilter."""
+    X = np.random.rand(10, 5, 2)
 
     # Add tests for different combinations of l_freq and h_freq
-    filt = Filterer(l_freq=40, h_freq=80, sfreq=epochs.info['sfreq'],
+    filt = TemporalFilter(l_freq=5, h_freq=15, sfreq=100,
                     filter_length='auto', l_trans_bandwidth='auto',
                     h_trans_bandwidth='auto')
-    y = epochs.events[:, -1]
     with warnings.catch_warnings(record=True):  # stop freq attenuation warning
-        result = filt.fit_transform(X, y)
+        result = filt.fit_transform(X)
         assert_true(X.shape == result.shape)
-        assert_array_equal(filt.fit(X, y).transform(X), result)
+        assert_array_equal(filt.fit(X).transform(X), result)
 
-    filt = Filterer(l_freq=None, h_freq=40, sfreq=epochs.info['sfreq'],
-                    filter_length='auto', l_trans_bandwidth='auto',
-                    h_trans_bandwidth='auto')
-    y = epochs.events[:, -1]
-    with warnings.catch_warnings(record=True):  # stop freq attenuation warning
-        X = filt.fit_transform(X, y)
-
-    filt = Filterer(l_freq=1, h_freq=1, sfreq=epochs.info['sfreq'])
-    y = epochs.events[:, -1]
-    with warnings.catch_warnings(record=True):  # stop freq attenuation warning
-        assert_raises(ValueError, filt.fit_transform, X, y)
-
-    filt = Filterer(l_freq=40, h_freq=None, sfreq=epochs.info['sfreq'],
+    filt = TemporalFilter(l_freq=None, h_freq=15, sfreq=100,
                     filter_length='auto', l_trans_bandwidth='auto',
                     h_trans_bandwidth='auto')
     with warnings.catch_warnings(record=True):  # stop freq attenuation warning
-        result = filt.fit_transform(X, y)
+        X = filt.fit_transform(X)
+
+    filt = TemporalFilter(l_freq=1, h_freq=1, sfreq=100)
+    with warnings.catch_warnings(record=True):  # stop freq attenuation warning
+        assert_raises(ValueError, filt.fit_transform, X)
+
+    filt = TemporalFilter(l_freq=5, h_freq=None, sfreq=100,
+                    filter_length='auto', l_trans_bandwidth='auto',
+                    h_trans_bandwidth='auto')
+    with warnings.catch_warnings(record=True):  # stop freq attenuation warning
+        result = filt.fit_transform(X)
 
     # Test fit and transform numpy type check
-    assert_raises(ValueError, filt.fit, epochs, y)
-    assert_raises(ValueError, filt.transform, epochs, y)
+    assert_raises(ValueError, filt.fit, filt)
+    assert_raises(ValueError, filt.transform, filt)
 
     # Test init test
-    assert_raises(ValueError, Filterer, "10 Hz")
-    assert_raises(ValueError, Filterer, 10, h_freq='5hz')
-    assert_raises(ValueError, Filterer, 10, l_trans_bandwidth='10s')
+    assert_raises(ValueError, TemporalFilter, "10 Hz")
+    assert_raises(ValueError, TemporalFilter, 10, h_freq='5hz')
+    assert_raises(ValueError, TemporalFilter, 10, l_trans_bandwidth='10s')
+
+    # Test with different dimensions
+    filt = TemporalFilter(l_freq=5, h_freq=15, sfreq=100)
+    X = np.random.rand(16, 5, 2, 2)
+    assert_equal(filt.fit_transform(X).shape, X.shape)
+    X = np.random.rand(5, 6)
+    assert_equal(filt.fit_transform(X).shape, X.shape)
