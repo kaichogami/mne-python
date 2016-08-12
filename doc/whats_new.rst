@@ -163,6 +163,8 @@ API
 
     - Extended Infomax is now the new default in :func:`mne.preprocessing.infomax` (``extended=True``), by `Clemens Brunner`_
 
+    - Added :class:`mne.decoding.TemporalFilter` to filter temporal data data in scikit-learn pipelines, by `Asish Panda`_
+
 .. _changes_0_12:
 
 Version 0.12
